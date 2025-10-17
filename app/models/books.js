@@ -34,7 +34,7 @@ const BookSchema = new Schema(
     }
 );
 
-// Ensure virtual fields are serialised.
+
 BookSchema.set('toJSON', {
     virtuals: true,
     versionKey:false,
