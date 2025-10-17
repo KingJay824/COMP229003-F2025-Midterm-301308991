@@ -1,9 +1,27 @@
 let BookModel = require('../models/books');
 
+module.exports.getAll = async function (req, res, next) {
+  try {
+    let books = await BookModel.find();
+    res.json(books);
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+}
+
 module.exports.getBook = async function (req, res, next) {
   try {
-    // Find one using the id sent in the parameter of the request
-    let book = await BookModel.findOne({ _id: req.params.bookId });
+    // support both :id and :bookId param names
+    const id = req.params.id || req.params.bookId;
+    if (!id) {
+      return res.status(400).json({ success:false, message: "Book id is required." });
+    }
+
+    let book = await BookModel.findById(id);
+    if (!book) {
+      return res.status(404).json({ success:false, message: "Book not found." });
+    }
 
     res.json(book);
 
@@ -15,37 +33,9 @@ module.exports.getBook = async function (req, res, next) {
 
 module.exports.create = async function (req, res, next) {
   try {
-    // Get input from the request
-    let book = req.body;
-
-    // Insert into the DB
-    let result = await BookModel.create(book);
-    console.log("Result: ", result);
-
-    // Send a response
-    res.status(200);
-    res.json(
-      {
-        success: true,
-        message: "Book created successfully.",
-        bookId: result._id
-      }
-    );
-
-  } catch (error) {
-    console.log(error);
-    next(error);
-  }
-
-}
-
-module.exports.getAll = async function (req, res, next) {
-  try {
-    // Get all from the DB.
-    let list = await BookModel.find();
-
-    // Send a response
-    res.json(list);
+    let newBook = new BookModel(req.body);
+    let result = await newBook.save();
+    res.status(201).json({ success:true, message: "Book created successfully.", book: result });
   } catch (error) {
     console.log(error);
     next(error);
@@ -54,26 +44,17 @@ module.exports.getAll = async function (req, res, next) {
 
 module.exports.update = async function (req, res, next) {
   try {
-    // Get input from the request
-    let updatedBook = BookModel(req.body);
-    updatedBook._id = req.params.bookId;
-
-    // Submit the change
-    let result = await BookModel.updateOne({ _id: req.params.bookId });
-    console.log("Result: ", result);
-
-    // Handle the result: send a response.
-    if (result.modifiedCount > 0) {
-      res.status(200);
-      res.json(
-        {
-          success: true,
-          message: "Book updated successfully."
-        }
-      );
-    } else {
-      throw new Error('Book not updated. Are you sure it exists?')
+    const id = req.params.bookId || req.params.id;
+    if (!id) {
+      return res.status(400).json({ success:false, message: "Book id is required." });
     }
+
+    let updated = await BookModel.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+    if (!updated) {
+      return res.status(404).json({ success:false, message: "Book not found or not updated." });
+    }
+
+    res.json({ success:true, message: "Book updated successfully.", book: updated });
 
   } catch (error) {
     console.log(error);
@@ -81,24 +62,18 @@ module.exports.update = async function (req, res, next) {
   }
 }
 
-
 module.exports.remove = async function (req, res, next) {
   try {
-    // Delete  using the id sent in the parameter of the request
-    let result = await BookModel.deleteOne({ _id: req.params.id });
-    console.log("Result: ", result);
+    const id = req.params.bookId || req.params.id;
+    if (!id) {
+      return res.status(400).json({ success:false, message: "Book id is required." });
+    }
 
-    // Handle the result and send a response
-    if (result.deletedCount > 0) {
-      res.status(200);
-      res.json(
-        {
-          success: true,
-          message: "Book deleted successfully."
-        }
-      );
+    let result = await BookModel.findByIdAndDelete(id);
+    if (result) {
+      res.json({ success: true, message: "Book deleted successfully." });
     } else {
-      throw new Error('Book not deleted. Are you sure it exists?')
+      return res.status(404).json({ success:false, message: "Book not found. Nothing deleted." });
     }
 
   } catch (error) {

@@ -5,7 +5,7 @@ var bookController = require('../controllers/books');
 
 router.get('/', bookController.getAll);
 router.post('/', bookController.create);
-router.get('/:id', bookController.getBook);
+router.get('/:bookId', bookController.getBook);
 router.put('/:bookId', bookController.update);
 router.delete('/:bookId', bookController.remove);
 
